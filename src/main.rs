@@ -61,7 +61,7 @@ fn experiment() -> u32 {
     trace!("B releases: {:?}, bad: {:?}", &b_rel, &b_bad_rel);
     trace!("C releases: {:?}, bad: {:?}", &c_rel, &c_bad_rel);
 
-    let mut time = 0;
+    let mut time;
     let mut b_cache_full_in = Some(TIME_TO_B_CACHE);
     let mut c_cache_full_in = Some(TIME_TO_C_CACHE);
     let mut downs = [(0, 0); 3 * BAD_RELEASE_COUNT];
@@ -106,7 +106,7 @@ fn experiment() -> u32 {
             b_available_in,
             c_available_in,
         ];
-        let next_time = match events.iter().filter_map(|x| *x).min() {
+        time = match events.iter().filter_map(|x| *x).min() {
             Some(val) => val,
             // end of the actions
             None => {
@@ -117,7 +117,7 @@ fn experiment() -> u32 {
 
         // common releases
         for it in [&mut a, &mut b, &mut c] {
-            if it.peek().copied() == Some(next_time) {
+            if it.peek().copied() == Some(time) {
                 it.next();
             }
         }
@@ -130,26 +130,26 @@ fn experiment() -> u32 {
             &mut b_available_in,
             &mut c_available_in,
         ] {
-            if *item == Some(next_time) {
+            if *item == Some(time) {
                 *item = None;
             }
         }
 
         // bad releases
-        if a_bad.peek().copied() == Some(next_time) {
-            trace!("A bad release at {}", next_time);
+        if a_bad.peek().copied() == Some(time) {
+            trace!("A bad release at {}", time);
             a_bad.next();
             a_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
             b_cache_full_in = Some(time + TIME_TO_B_CACHE);
             c_cache_full_in = Some(time + TIME_TO_C_CACHE);
         }
-        if b_bad.peek().copied() == Some(next_time) {
-            trace!("B bad release at {}", next_time);
+        if b_bad.peek().copied() == Some(time) {
+            trace!("B bad release at {}", time);
             b_bad.next();
             b_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
         }
-        if c_bad.peek().copied() == Some(next_time) {
-            trace!("C bad release at {}", next_time);
+        if c_bad.peek().copied() == Some(time) {
+            trace!("C bad release at {}", time);
             c_bad.next();
             c_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
         }
@@ -164,13 +164,14 @@ fn experiment() -> u32 {
         );
 
         if available_before && !available_after {
-            downs[downs_count].0 = next_time;
+            trace!("Down at {}", time);
+            downs[downs_count].0 = time;
         } else if !available_before && available_after {
-            downs[downs_count].1 = next_time;
+            trace!("Up at {}", time);
+            downs[downs_count].1 = time;
             downs_count += 1;
         }
 
-        time = next_time;
     }
 
     debug!("Downs: {:?}", &downs[0..downs_count]);
@@ -192,7 +193,7 @@ fn is_now_available(
         && (c_available_in.is_none() || c_cache_full_in.is_none())
 }
 
-const EXPERIMENT_COUNT: usize = 1;
+const EXPERIMENT_COUNT: usize = 100000000;
 
 fn main() {
     env_logger::init();
