@@ -108,7 +108,7 @@ fn experiment() -> u32 {
             b_available_in,
             c_available_in,
         ];
-        time = match events.iter().filter_map(|x| *x).min() {
+        time = match events.into_iter().flatten().min() {
             Some(val) => val,
             // end of the actions
             None => {
@@ -124,6 +124,28 @@ fn experiment() -> u32 {
             }
         }
 
+        // bad releases
+        if a_bad.peek().copied() == Some(time) {
+            trace!("A bad release at {}", time);
+            a_bad.next();
+
+            a_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
+            b_cache_full_in = Some(time + TIME_TO_B_CACHE);
+            c_cache_full_in = Some(time + TIME_TO_C_CACHE);
+        }
+        if b_bad.peek().copied() == Some(time) {
+            trace!("B bad release at {}", time);
+            b_bad.next();
+            b_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
+            b_cache_full_in = b_cache_full_in.map(|t| t + UNAVAILABLE_TIME_AFTER_BAD);
+        }
+        if c_bad.peek().copied() == Some(time) {
+            trace!("C bad release at {}", time);
+            c_bad.next();
+            c_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
+            c_cache_full_in = c_cache_full_in.map(|t| t + UNAVAILABLE_TIME_AFTER_BAD);
+        }
+
         // cache full time and unavailable time
         for item in [
             &mut b_cache_full_in,
@@ -135,25 +157,6 @@ fn experiment() -> u32 {
             if *item == Some(time) {
                 *item = None;
             }
-        }
-
-        // bad releases
-        if a_bad.peek().copied() == Some(time) {
-            trace!("A bad release at {}", time);
-            a_bad.next();
-            a_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
-            b_cache_full_in = Some(time + TIME_TO_B_CACHE);
-            c_cache_full_in = Some(time + TIME_TO_C_CACHE);
-        }
-        if b_bad.peek().copied() == Some(time) {
-            trace!("B bad release at {}", time);
-            b_bad.next();
-            b_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
-        }
-        if c_bad.peek().copied() == Some(time) {
-            trace!("C bad release at {}", time);
-            c_bad.next();
-            c_available_in = Some(time + UNAVAILABLE_TIME_AFTER_BAD);
         }
 
         // analyze downtime
@@ -194,7 +197,8 @@ fn is_now_available(
         && (c_available_in.is_none() || c_cache_full_in.is_none())
 }
 
-const EXPERIMENT_COUNT: usize = 10_000_000;
+// const EXPERIMENT_COUNT: usize = 1_000_000_000;
+const EXPERIMENT_COUNT: usize = 10_000;
 
 fn main() {
     env_logger::init();
