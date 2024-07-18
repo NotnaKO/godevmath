@@ -1,5 +1,7 @@
 use itertools::Itertools;
 use log::{debug, trace};
+use num_rational::Ratio;
+use num_traits::cast::ToPrimitive;
 use rand::seq::IteratorRandom;
 use rand::Rng;
 use rayon::iter::repeatn;
@@ -171,7 +173,6 @@ fn experiment() -> u32 {
             downs[downs_count].1 = time;
             downs_count += 1;
         }
-
     }
 
     debug!("Downs: {:?}", &downs[0..downs_count]);
@@ -193,7 +194,7 @@ fn is_now_available(
         && (c_available_in.is_none() || c_cache_full_in.is_none())
 }
 
-const EXPERIMENT_COUNT: usize = 100000000;
+const EXPERIMENT_COUNT: usize = 10_000_000;
 
 fn main() {
     env_logger::init();
@@ -201,8 +202,14 @@ fn main() {
         .map(|_| experiment() as u64)
         .sum();
     println!("Unavailable sum: {}", unavailable_sum);
+    let average_unavailable = Ratio::<u64>::new(unavailable_sum, EXPERIMENT_COUNT as u64);
     println!(
-        "Average unavailable time: {}",
-        unavailable_sum as f64 / EXPERIMENT_COUNT as f64
+        "Average unavailable time: {} ({})",
+        average_unavailable,
+        average_unavailable.to_f64().unwrap()
     );
+    let percent = Ratio::from_integer(100_u64)
+        * (Ratio::from_integer(1_u64)
+            - average_unavailable / Ratio::from_integer(YEAR_TIME as u64));
+    println!("Percent: {}({})", percent, percent.to_f64().unwrap());
 }
